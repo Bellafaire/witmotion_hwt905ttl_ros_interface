@@ -10,7 +10,7 @@ int main(int argc, char **argv)
     ros::NodeHandle pn("~");
 
     // Instantiate node class
-    hwt905ttl::HWT905TTL node(n, pn, 10);
+    hwt905ttl::HWT905TTL node(n, pn, 115200, "/dev/ttyUSB0");
 
     // Spin and process callbacks
     ros::spin();
