@@ -15,12 +15,16 @@ int main(int argc, char **argv)
     // Spin and process callbacks
     // ros::spin();
 
-    ros::Rate(1 / 10.0);
+    ros::Rate(1 / 100.0);
 
-    while(ros::ok())
+    unsigned long count = 0;
+
+    while (ros::ok())
+    {
         node.getData();
+        // node.pub_data();
+    }
 
     node.uart_close();
     ROS_INFO("HWT905TTL Interface, Closing UART");
-    
 }

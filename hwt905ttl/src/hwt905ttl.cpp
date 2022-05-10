@@ -17,24 +17,37 @@ namespace hwt905ttl
             ParseData(r_buf[i]);
         }
 
+        bool recent_orientation = (ros::Time::now() - orientation.header.stamp) < ros::Duration(0.02);
+        bool recent_accel = (ros::Time::now() - accel.header.stamp) < ros::Duration(0.02);
+        bool recent_angular_vel = (ros::Time::now() - angular_vel.header.stamp) < ros::Duration(0.02);
+        bool pub_ready = (ros::Time::now() - last_pub) > ros::Duration(1 / publish_freq);
 
+        if (recent_orientation && recent_accel && recent_angular_vel && pub_ready)
+            pub_data();
+    }
+
+    bool HWT905TTL::pub_data()
+    {
         sensor_msgs::Imu msg;
         msg.header.stamp = ros::Time::now();
+        last_pub = msg.header.stamp;
         msg.header.frame_id = "base_link";
 
-        msg.orientation.x = q[0];
-        msg.orientation.y = q[1];
-        msg.orientation.z = q[2];
-        msg.orientation.w = q[3];
+        msg.orientation = orientation.quaternion;
+        msg.linear_acceleration = accel.vector;
+        msg.angular_velocity = angular_vel.vector;
 
-        msg.angular_velocity.x = w[0];
-        msg.angular_velocity.y = w[1];
-        msg.angular_velocity.z = w[2];
+        ROS_INFO("IMU Data: \n   q: %0.2f %0.2f %0.2f %0.2f \n   w: %0.2f %0.2f %0.2f \n    a: %0.2f %0.2f %0.2f",
+                 orientation.quaternion.x, orientation.quaternion.y, orientation.quaternion.z, orientation.quaternion.w,
+                 angular_vel.vector.x, angular_vel.vector.y, angular_vel.vector.z,
+                 accel.vector.x, accel.vector.y, accel.vector.z);
 
-        msg.linear_acceleration.x = a[0];
-        msg.linear_acceleration.y = a[1];
-        msg.linear_acceleration.z = a[2];
+        //clear the messages (and by extension the stamps) so that we're not pubbing more than we should
+        orientation = geometry_msgs::QuaternionStamped();
+        accel = geometry_msgs::Vector3Stamped();
+        angular_vel = geometry_msgs::Vector3Stamped();
 
+        // only pub data that is stamped recently.
         imu_pub.publish(msg);
     }
 
@@ -210,12 +223,24 @@ namespace hwt905ttl
         case 0x51:
             for (i = 0; i < 3; i++)
                 a[i] = (float)sData[i] / 32768.0 * 16.0;
-            time(&now);
+
+            // load info into the accel message
+            accel.vector.x = a[0];
+            accel.vector.y = a[1];
+            accel.vector.z = a[2];
+            accel.header.stamp = ros::Time::now();
+
             // ROS_INFO("\r\nAccel: %6.3f %6.3f %6.3f ", a[0], a[1], a[2]);
             break;
         case 0x52:
             for (i = 0; i < 3; i++)
                 w[i] = (float)sData[i] / 32768.0 * 2000.0;
+
+            angular_vel.vector.x = w[0];
+            angular_vel.vector.y = w[1];
+            angular_vel.vector.z = w[2];
+            angular_vel.header.stamp = ros::Time::now();
+
             // ROS_INFO("Angular Velocity:%7.3f %7.3f %7.3f ", w[0], w[1], w[2]);
             break;
         case 0x53:
@@ -231,6 +256,15 @@ namespace hwt905ttl
         case 0x59:
             for (i = 0; i < 4; i++)
                 q[i] = (float)sData[i] / 32768.0;
+
+            // datasheet isn't clear on what is where, sourcing the indexes from here https://github.com/wykxwyc/hwtimu_driver/blob/master/hwtimu/src/hwtimu.cpp
+            orientation.quaternion.x = q[1];
+            orientation.quaternion.y = q[2];
+            orientation.quaternion.z = q[3];
+            orientation.quaternion.w = q[0];
+
+            orientation.header.stamp = ros::Time::now();
+
             // ROS_INFO("Quat:%4.3f %4.3f %4.3f %4.3f ", q[0], q[1], q[2], q[3]);
             break;
         }

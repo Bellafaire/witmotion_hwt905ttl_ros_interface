@@ -16,6 +16,8 @@
 #include <sys/types.h>
 #include <errno.h>
 #include "sensor_msgs/Imu.h"
+#include "geometry_msgs/Vector3Stamped.h"
+#include "geometry_msgs/QuaternionStamped.h"
 
 // Namespace matches ROS package name
 namespace hwt905ttl
@@ -31,11 +33,17 @@ namespace hwt905ttl
         int recv_data(int fd, char *recv_buffer, int length);
         void ParseData(char chr);
         bool getData();
+        bool pub_data();
     private:
+        const static int publish_freq = 100.0; 
+        ros::Time last_pub; 
         double a[3], w[3], Angle[3], h[3], q[4];
         char r_buf[1024];
         int ret, fd; 
         ros::Publisher imu_pub; 
+        geometry_msgs::Vector3Stamped accel; 
+        geometry_msgs::Vector3Stamped angular_vel; 
+        geometry_msgs::QuaternionStamped orientation;
     };
 }
 
