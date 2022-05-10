@@ -5,12 +5,22 @@
 int main(int argc, char **argv)
 {
     // Initialize ROS and declare node handles
-    ros::init(argc, argv, "HWT905TTL");
+    ros::init(argc, argv, "hwt905ttl_node");
     ros::NodeHandle n;
     ros::NodeHandle pn("~");
 
+    std::string port = "/dev/ttyUSB0";
+    int baud_rate = 115200;
+
+    if(!ros::param::get("~port", port))
+        ROS_WARN("IMU port not set by launch, defaulting to %s", port.c_str());
+    if(!ros::param::get("~baud_rate", baud_rate))
+        ROS_WARN("IMU baud_rate not set by launch, defaulting to %d", baud_rate);
+
+
+
     // Instantiate node class
-    hwt905ttl::HWT905TTL node(n, pn, 115200, "/dev/ttyUSB0");
+    hwt905ttl::HWT905TTL node(n, pn, baud_rate, port.c_str());
 
     // Spin and process callbacks
     // ros::spin();
