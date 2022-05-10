@@ -2,11 +2,49 @@
 
 namespace hwt905ttl
 {
+
+    bool HWT905TTL::getData()
+    {
+
+        ret = recv_data(fd, r_buf, 44);
+        if (ret == -1)
+        {
+            fprintf(stderr, "uart read failed!\n");
+            exit(EXIT_FAILURE);
+        }
+        for (int i = 0; i < ret; i++)
+        {
+            ParseData(r_buf[i]);
+        }
+
+
+        sensor_msgs::Imu msg;
+        msg.header.stamp = ros::Time::now();
+        msg.header.frame_id = "base_link";
+
+        msg.orientation.x = q[0];
+        msg.orientation.y = q[1];
+        msg.orientation.z = q[2];
+        msg.orientation.w = q[3];
+
+        msg.angular_velocity.x = w[0];
+        msg.angular_velocity.y = w[1];
+        msg.angular_velocity.z = w[2];
+
+        msg.linear_acceleration.x = a[0];
+        msg.linear_acceleration.y = a[1];
+        msg.linear_acceleration.z = a[2];
+
+        imu_pub.publish(msg);
+    }
+
     // Constructor with global and private node handle arguments
     HWT905TTL::HWT905TTL(ros::NodeHandle n, ros::NodeHandle pn, int baud, const char *port)
     {
         ROS_INFO("Created HWT905TTL Instance on port %s at baud rate of %d", port, baud);
         bzero(r_buf, 1024);
+
+        imu_pub = n.advertise<sensor_msgs::Imu>("imu", 10);
 
         // open uart, check for error
         fd = uart_open(fd, port);
@@ -22,22 +60,6 @@ namespace hwt905ttl
             fprintf(stderr, "uart set failed!\n");
             exit(EXIT_FAILURE);
         }
-
-        // debug to confirm that we're receiving data for now
-        while (1)
-        {
-            ret = recv_data(fd, r_buf, 44);
-            if (ret == -1)
-            {
-                fprintf(stderr, "uart read failed!\n");
-                exit(EXIT_FAILURE);
-            }
-            for (int i = 0; i < ret; i++)
-            {
-                ParseData(r_buf[i]);
-            }
-            usleep(1000);
-        }
     }
 
     int HWT905TTL::uart_open(int fd, const char *pathname)
@@ -49,7 +71,7 @@ namespace hwt905ttl
             return (-1);
         }
         else
-            printf("open %s success!\n", pathname);
+            ROS_INFO("open %s success!\n", pathname);
         if (isatty(STDIN_FILENO) == 0)
             printf("standard input is not a terminal device\n");
         else
@@ -139,11 +161,11 @@ namespace hwt905ttl
             perror("com set error");
             return -1;
         }
-        printf("set done!\n");
+        ROS_INFO("set done!\n");
         return 0;
     }
 
-    int HWT905TTL::uart_close(int fd)
+    int HWT905TTL::uart_close()
     {
         assert(fd);
         close(fd);
@@ -189,27 +211,27 @@ namespace hwt905ttl
             for (i = 0; i < 3; i++)
                 a[i] = (float)sData[i] / 32768.0 * 16.0;
             time(&now);
-            printf("\r\nAccel: %6.3f %6.3f %6.3f ", a[0], a[1], a[2]);
+            // ROS_INFO("\r\nAccel: %6.3f %6.3f %6.3f ", a[0], a[1], a[2]);
             break;
         case 0x52:
             for (i = 0; i < 3; i++)
                 w[i] = (float)sData[i] / 32768.0 * 2000.0;
-            printf("Angular Velocity:%7.3f %7.3f %7.3f ", w[0], w[1], w[2]);
+            // ROS_INFO("Angular Velocity:%7.3f %7.3f %7.3f ", w[0], w[1], w[2]);
             break;
         case 0x53:
             for (i = 0; i < 3; i++)
                 Angle[i] = (float)sData[i] / 32768.0 * 180.0;
-            printf("Angle:%7.3f %7.3f %7.3f ", Angle[0], Angle[1], Angle[2]);
+            // ROS_INFO("Angle:%7.3f %7.3f %7.3f ", Angle[0], Angle[1], Angle[2]);
             break;
         case 0x54:
             for (i = 0; i < 3; i++)
                 h[i] = (float)sData[i];
-            printf("Mag:%4.0f %4.0f %4.0f ", h[0], h[1], h[2]);
+            // ROS_INFO("Mag:%4.0f %4.0f %4.0f ", h[0], h[1], h[2]);
             break;
         case 0x59:
             for (i = 0; i < 4; i++)
                 q[i] = (float)sData[i] / 32768.0;
-            printf("Quat:%4.3f %4.3f %4.3f %4.3f ", q[0], q[1], q[2], q[3]);
+            // ROS_INFO("Quat:%4.3f %4.3f %4.3f %4.3f ", q[0], q[1], q[2], q[3]);
             break;
         }
         chrCnt = 0;
