@@ -9,9 +9,9 @@ namespace hwt905ttl
         ret = recv_data(fd, r_buf, 44);
         if (ret == -1)
         {
-            fprintf(stderr, "uart read failed!\n");
-            exit(EXIT_FAILURE);
-        }
+            ROS_ERROR_THROTTLE(1, "uart read failed!");
+            return false;
+	}
         for (int i = 0; i < ret; i++)
         {
             ParseData(r_buf[i]);
@@ -37,10 +37,10 @@ namespace hwt905ttl
         msg.linear_acceleration = accel.vector;
         msg.angular_velocity = angular_vel.vector;
 
-        ROS_INFO("IMU Data: \n   q: %0.2f %0.2f %0.2f %0.2f \n   w: %0.2f %0.2f %0.2f \n    a: %0.2f %0.2f %0.2f",
+        /*ROS_INFO("IMU Data: \n   q: %0.2f %0.2f %0.2f %0.2f \n   w: %0.2f %0.2f %0.2f \n    a: %0.2f %0.2f %0.2f",
                  orientation.quaternion.x, orientation.quaternion.y, orientation.quaternion.z, orientation.quaternion.w,
                  angular_vel.vector.x, angular_vel.vector.y, angular_vel.vector.z,
-                 accel.vector.x, accel.vector.y, accel.vector.z);
+                 accel.vector.x, accel.vector.y, accel.vector.z); */
 
         //clear the messages (and by extension the stamps) so that we're not pubbing more than we should
         orientation = geometry_msgs::QuaternionStamped();
@@ -63,14 +63,14 @@ namespace hwt905ttl
         fd = uart_open(fd, port);
         if (fd == -1)
         {
-            fprintf(stderr, "uart_open error\n");
+            ROS_ERROR("uart_open error");
             exit(EXIT_FAILURE);
         }
 
         // set baud rate and check for error
         if (uart_set(fd, baud, 8, 'N', 1) == -1)
         {
-            fprintf(stderr, "uart set failed!\n");
+            ROS_ERROR("uart set failed!");
             exit(EXIT_FAILURE);
         }
     }
@@ -211,9 +211,15 @@ namespace hwt905ttl
             cTemp += chrBuf[i];
         if ((chrBuf[0] != 0x55) || ((chrBuf[1] & 0x50) != 0x50) || (cTemp != chrBuf[10]))
         {
-            printf("Error:%x %x\r\n", chrBuf[0], chrBuf[1]);
+            ROS_ERROR_THROTTLE(2,"Error:%x %x\r\n", chrBuf[0], chrBuf[1]);
             memcpy(&chrBuf[0], &chrBuf[1], 10);
             chrCnt--;
+
+
+	    //this is literally "Turn it off and turn it back on again" and I hate it but I can't really think of any other solutions to this problem. 
+	    ROS_ERROR("Could not parse data from IMU, imu interface will shutdown. If respawn = true it should start right back up");
+	    ros::shutdown();
+
             return;
         }
 

@@ -25,7 +25,10 @@ int main(int argc, char **argv)
     // Spin and process callbacks
     // ros::spin();
 
-    ros::Rate(1 / 100.0);
+    //for whatever reason the value of the rate seems to give us 
+    //half the output speed on rostopic hz, so for a 20hz publish rate
+    //we need to set this rate to 50hz
+    ros::Rate rate(50.0);
 
     unsigned long count = 0;
 
@@ -33,6 +36,8 @@ int main(int argc, char **argv)
     {
         node.getData();
         // node.pub_data();
+	rate.sleep();
+	ros::spinOnce();
     }
 
     node.uart_close();
