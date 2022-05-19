@@ -17,13 +17,17 @@ namespace hwt905ttl
             ParseData(r_buf[i]);
         }
 
-        bool recent_orientation = (ros::Time::now() - orientation.header.stamp) < ros::Duration(0.02);
-        bool recent_accel = (ros::Time::now() - accel.header.stamp) < ros::Duration(0.02);
-        bool recent_angular_vel = (ros::Time::now() - angular_vel.header.stamp) < ros::Duration(0.02);
+        bool recent_orientation = (ros::Time::now() - orientation.header.stamp) < ros::Duration(1 / publish_freq);
+        bool recent_accel = (ros::Time::now() - accel.header.stamp) < ros::Duration(1 / publish_freq);
+        bool recent_angular_vel = (ros::Time::now() - angular_vel.header.stamp) < ros::Duration(1 / publish_freq);
         bool pub_ready = (ros::Time::now() - last_pub) > ros::Duration(1 / publish_freq);
 
         if (recent_orientation && recent_accel && recent_angular_vel && pub_ready)
             pub_data();
+    }
+
+    double HWT905TTL::getPublishFreq(){
+        return publish_freq;
     }
 
     bool HWT905TTL::pub_data()
@@ -37,10 +41,10 @@ namespace hwt905ttl
         msg.linear_acceleration = accel.vector;
         msg.angular_velocity = angular_vel.vector;
 
-        /*ROS_INFO("IMU Data: \n   q: %0.2f %0.2f %0.2f %0.2f \n   w: %0.2f %0.2f %0.2f \n    a: %0.2f %0.2f %0.2f",
+        ROS_DEBUG("IMU Data: \n   q: %0.2f %0.2f %0.2f %0.2f \n   w: %0.2f %0.2f %0.2f \n    a: %0.2f %0.2f %0.2f",
                  orientation.quaternion.x, orientation.quaternion.y, orientation.quaternion.z, orientation.quaternion.w,
                  angular_vel.vector.x, angular_vel.vector.y, angular_vel.vector.z,
-                 accel.vector.x, accel.vector.y, accel.vector.z); */
+                 accel.vector.x, accel.vector.y, accel.vector.z); 
 
         //clear the messages (and by extension the stamps) so that we're not pubbing more than we should
         orientation = geometry_msgs::QuaternionStamped();

@@ -34,8 +34,9 @@ namespace hwt905ttl
         void ParseData(char chr);
         bool getData();
         bool pub_data();
+        double getPublishFreq(); 
     private:
-        const static int publish_freq = 100.0; 
+        double publish_freq = 20.0; 
         ros::Time last_pub; 
         double a[3], w[3], Angle[3], h[3], q[4];
         char r_buf[1024];
